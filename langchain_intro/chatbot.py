@@ -10,34 +10,48 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_community.vectorstores import Chroma
 from langchain_openai import OpenAIEmbeddings
 from langchain.schema.runnable import RunnablePassthrough
-from langchain.agents import create_openai_functions_agent, Tool, AgentExecutor
+from langchain.agents import (
+    create_openai_functions_agent,
+    Tool,
+    AgentExecutor,
+)
 from langchain import hub
 from langchain_intro.tools import get_current_wait_time
 
 REVIEWS_CHROMA_PATH = "chroma_data/"
 
-
 dotenv.load_dotenv()
 
-review_template_str = """Your job is to use patient
-reviews to answer questions about their experience at a hospital. Use
-the following context to answer questions. Be as detailed as possible, but
-don't make up any information that's not from the context. If you don't know
-an answer, say you don't know.
+review_system_template_str = """
+Your job is to use patient reviews to answer
+questions about their experience at a hospital.
+Use the following context to answer questions.
+Be as detailed as possible, but don't make up
+any information that's not from the context.
+If you don't know an answer, say you don't know.
+
 {context}
 """
 
 review_system_prompt = SystemMessagePromptTemplate(
-    prompt=PromptTemplate(input_variables=["context"], template=review_template_str)
+    prompt=PromptTemplate(
+        input_variables=["context"],
+        template=review_system_template_str,
+    )
 )
 
 review_human_prompt = HumanMessagePromptTemplate(
-    prompt=PromptTemplate(input_variables=["question"], template="{question}")
+    prompt=PromptTemplate(
+        input_variables=["question"],
+        template="{question}"
+    )
 )
+
 messages = [review_system_prompt, review_human_prompt]
 
 review_prompt_template = ChatPromptTemplate(
-    input_variables=["context", "question"], messages=messages
+    input_variables=["context", "question"],
+    messages=messages,
 )
 
 chat_model = ChatOpenAI(model="gpt-3.5-turbo-0125", temperature=0)
@@ -46,13 +60,13 @@ output_parser = StrOutputParser()
 
 reviews_vector_db = Chroma(
     persist_directory=REVIEWS_CHROMA_PATH,
-    embedding_function=OpenAIEmbeddings(),
+    embedding_function=OpenAIEmbeddings()
 )
 
 reviews_retriever = reviews_vector_db.as_retriever(k=10)
 
 review_chain = (
-    {"context": reviews_retriever, "question": RunnablePassthrough()}
+    {"context": reviews_retriever,  "question": RunnablePassthrough()}
     | review_prompt_template
     | chat_model
     | StrOutputParser()
@@ -83,7 +97,7 @@ tools = [
         only the hospital name itself. For instance, if the question is
         "What is the wait time at hospital A?", the input should be "A".
         """,
-    ),
+    ),   
 ]
 
 hospital_agent_prompt = hub.pull("hwchase17/openai-functions-agent")
@@ -105,3 +119,12 @@ hospital_agent_executor = AgentExecutor(
     return_intermediate_steps=True,
     verbose=True,
 )
+
+# context = "I had a great stay!"
+# question = "Did anyone have a positive experience?"
+
+# print(review_chain.invoke({"context": context,  "question": question}))
+
+# question = """Has anyone complained about
+#             communication with the hospital staff?"""
+# print(review_chain.invoke(question))

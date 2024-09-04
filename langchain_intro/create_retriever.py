@@ -12,5 +12,17 @@ loader = CSVLoader(file_path=REVIEWS_CSV_PATH, source_column="review")
 reviews = loader.load()
 
 reviews_vector_db = Chroma.from_documents(
-    reviews, OpenAIEmbeddings(), persist_directory=REVIEWS_CHROMA_PATH
+    reviews,
+    OpenAIEmbeddings(),
+    persist_directory=REVIEWS_CHROMA_PATH,
 )
+
+question = """Has anyone complained about communication
+            with the hospital staff?"""
+relevant_docs = reviews_vector_db.similarity_search(question, k=3)
+print(relevant_docs)
+print("\n")
+print(f"Doc length: {len(relevant_docs)}")
+if len(relevant_docs) > 1:
+    for docs in relevant_docs:
+        print(docs)
